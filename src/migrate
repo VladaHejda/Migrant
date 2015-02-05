@@ -1,0 +1,30 @@
+#!/usr/bin/env php
+<?php
+
+use Deployment\CommandLine;
+use VladaHejda\Migrant;
+
+require_once __DIR__ . '/../../../autoload.php';
+
+$cmd = new CommandLine(<<<STR
+
+Migrant
+-------
+Usage:
+	migrate <config_ini_file>
+
+STR
+	, ['config' => [CommandLine::REALPATH => true], ]);
+
+if ($cmd->isEmpty()) {
+	$cmd->help();
+	exit;
+}
+$options = $cmd->parse();
+
+try {
+	Migrant\LocalRunner::run($options['config']);
+} catch (Migrant\ConfigurationException $e) {
+	echo $e->getMessage() . "\n";
+	return;
+}
