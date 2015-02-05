@@ -20,7 +20,7 @@ class RemoteRunner extends Runner
 				// probably the first deploy ever
 				return;
 			}
-			throw new RequestException('Temporary Migrant configuration not found.');
+			throw new RequestException('Migrant configuration not found.');
 		}
 
 		try {
@@ -28,11 +28,14 @@ class RemoteRunner extends Runner
 				return unserialize(file_get_contents($settingsFile));
 			}, 'unserialize');
 		} catch (\ErrorException $e) {
-			throw new RequestException('Broken temporary Migrant configuration.', 0, $e);
+			throw new RequestException('Broken Migrant configuration.', 0, $e);
 		}
-		unlink($settingsFile);
 
-		self::check($settings['allowedIps'], $settings['password'], $password);
+		self::checkIp($settings['allowedIps'], $settings['password'], $password);
+		// todo START se provádí před deployem, takže nemá konfiguraci, nějak pořešit (možná čekovat předchozim heslem?)
+		if ($operation !== self::START) {
+			self::checkCredentials($settings['allowedIps'], $settings['password'], $password);
+		}
 
 		$pdoDsn = sprintf('%s:host=%s;dbname=%s', $settings['pdo']['driver'], $settings['pdo']['host'], $settings['pdo']['database']);
 		$configuration = new Configuration(new PDO($pdoDsn, $settings['pdo']['username'], $settings['pdo']['password']));
@@ -52,8 +55,7 @@ class RemoteRunner extends Runner
 
 		switch ($operation) {
 			case 'start':
-				// todo nemá konfiguraci, protože se provádí před deployem
-//				$migrant->start();
+				$migrant->start();
 				break;
 			case 'stop':
 				$migrant->stop();
@@ -67,14 +69,18 @@ class RemoteRunner extends Runner
 	}
 
 
-	private static function check(array $allowedIps, $passwordA, $passwordB)
+	private static function checkIp(array $allowedIps)
 	{
 		$ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
 
 		if (!in_array($ip, $allowedIps, true)) {
 			throw new RequestException('Request from disallowed IP address.');
 		}
+	}
 
+
+	private static function checkCredentials($passwordA, $passwordB)
+	{
 		if (empty($passwordA) || $passwordA !== $passwordB) {
 			throw new RequestException('Empty or wrong password.');
 		}
