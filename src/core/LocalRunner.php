@@ -24,7 +24,7 @@ class LocalRunner extends Runner
 		$deploySettings += [
 			'before' => [], 'after' => [],
 		];
-		$url = sprintf('http://%s/handle-maintenance.php', $settings['siteUrl']);
+		$url = sprintf('%s/handle-maintenance.php', $settings['siteUrl']);
 		$settings['password'] = self::generatePassword();
 
 		if (!file_exists($settings['secretDir'])) {
