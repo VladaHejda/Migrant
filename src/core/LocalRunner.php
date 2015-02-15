@@ -26,8 +26,22 @@ class LocalRunner extends Runner
 		];
 		$url = sprintf('http://%s/handle-maintenance.php', $settings['siteUrl']);
 		$settings['password'] = self::generatePassword();
+
+		if (!file_exists($settings['secretDir'])) {
+			mkdir($settings['secretDir']);
+		}
+		$temp503File = $settings['secretDir'] . '/' . self::$tempPassword503FileName . '-local';
+		$handle = fopen($temp503File, 'a+');
+		rewind($handle);
+		$password503 = trim(fread($handle, filesize($temp503File) ?: 1));
+		if (!empty($password503)) {
+			$deploySettings['before'][] = sprintf('%s?operation=start&password=%s', $url, urlencode($password503));
+			ftruncate($handle, 0);
+		}
+		fwrite($handle, $settings['password']);
+		fclose($handle);
+
 		$encodedPassword = urlencode($settings['password']);
-		$deploySettings['before'][] = sprintf('%s?operation=start&password=%s', $url, $encodedPassword);
 		$deploySettings['after'][] = sprintf('%s?operation=migrate&password=%s', $url, $encodedPassword);
 		$deploySettings['after'][] = sprintf('%s?operation=stop&password=%s', $url, $encodedPassword);
 
@@ -88,9 +102,10 @@ class LocalRunner extends Runner
 			$section['allowedIps']))) : [];
 
 		$section += [
-			'storageDir' => self::getRootDir() . '/',
-			'log' => self::getRootDir() . '/log/migrant.log',
-			'migrationsDir' => self::getRootDir() . '/migrations',
+			'storageDir' => self::getRootDir() . '/', // remote only
+			'log' => self::getRootDir() . '/log/migrant.log', // remote only
+			'migrationsDir' => self::getRootDir() . '/migrations', // client & remote (deployed)
+			'secretDir' => self::getRootDir() . '/.secret', // client & remote (not deployed, must persist between deployments)
 			'reportingMail' => null,
 		];
 

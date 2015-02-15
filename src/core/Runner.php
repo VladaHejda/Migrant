@@ -8,6 +8,9 @@ abstract class Runner
 	/** @var string */
 	static $tempSettingsFileName = '.migrant';
 
+	/** @var string */
+	static $tempPassword503FileName = '.mig503passw';
+
 
 	protected static function tryCall(callable $try, $check = null)
 	{
@@ -30,6 +33,7 @@ abstract class Runner
 
 	protected static function getRootDir()
 	{
+		// the root dir where composer's "vendor" dir is placed
 		return __DIR__ . '/../../../../..';
 	}
 
