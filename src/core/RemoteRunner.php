@@ -14,7 +14,7 @@ class RemoteRunner extends Runner
 
 	public static function run($operation, $password)
 	{
-		$settingsFile = __DIR__ . '/../../../../../' . static::$tempSettingsFileName;
+		$settingsFile = self::getRootDir() . '/' . self::$tempSettingsFileName;
 		if (!file_exists($settingsFile)) {
 			if ($operation === self::START) {
 				// probably the first deploy ever

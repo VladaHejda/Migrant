@@ -27,4 +27,10 @@ abstract class Runner
 		return $r;
 	}
 
+
+	protected static function getRootDir()
+	{
+		return __DIR__ . '/../../../../..';
+	}
+
 }

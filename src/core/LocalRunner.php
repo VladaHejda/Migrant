@@ -2,8 +2,6 @@
 
 namespace VladaHejda\Migrant;
 
-use Deployment\CommandLine;
-
 class LocalRunner extends Runner
 {
 
@@ -34,7 +32,7 @@ class LocalRunner extends Runner
 		$deploySettings['after'][] = sprintf('%s?operation=stop&password=%s', $url, $encodedPassword);
 
 		// let migrant settings deploy
-		$settingsFile = __DIR__ . '/../../../../../' . static::$tempSettingsFileName;
+		$settingsFile = self::getRootDir() . self::$tempSettingsFileName;
 		$handle = fopen($settingsFile, 'w');
 		fwrite($handle, serialize($settings));
 		fclose($handle);
@@ -90,9 +88,9 @@ class LocalRunner extends Runner
 			$section['allowedIps']))) : [];
 
 		$section += [
-			'storageDir' => __DIR__ . '/../../../../../',
-			'log' => __DIR__ . '/../../../../../log/migrant.log',
-			'migrationsDir' => __DIR__ . '/../../../../../migrations',
+			'storageDir' => self::getRootDir() . '/',
+			'log' => self::getRootDir() . '/log/migrant.log',
+			'migrationsDir' => self::getRootDir() . '/migrations',
 			'reportingMail' => null,
 		];
 
