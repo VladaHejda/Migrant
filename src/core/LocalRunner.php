@@ -5,28 +5,18 @@ namespace VladaHejda\Migrant;
 class LocalRunner extends Runner
 {
 
-	public static function run($configFile)
+	public function run($configFile)
 	{
-		$globalSettings = self::parseConfig($configFile);
+		$globalSettings = $this->parseConfig($configFile);
 		$settings = $globalSettings['migrant'];
 		unset($globalSettings['migrant']);
 
-		// find first deployment section
-		reset($globalSettings);
-		$deploySettings = & $globalSettings;
-		while (!isset($deploySettings['remote'])) {
-			$section = key($globalSettings);
-			$deploySettings = & $globalSettings[$section];
-			next($globalSettings);
-		}
+		$jobs = $this->findJobs($globalSettings);
 
-		// append before/after procedures
-		$deploySettings += [
-			'before' => [], 'after' => [],
-		];
-		$url = sprintf('%s/handle-maintenance.php', $settings['siteUrl']);
+		$url = sprintf('%s/handle-maintenance.php', rtrim($settings['siteUrl'], '/'));
 		$settings['password'] = self::generatePassword();
 
+		// todo přidat settings ignore /.secret ?
 		if (!file_exists($settings['secretDir'])) {
 			mkdir($settings['secretDir']);
 		}
@@ -35,26 +25,26 @@ class LocalRunner extends Runner
 		rewind($handle);
 		$password503 = trim(fread($handle, filesize($temp503File) ?: 1));
 		if (!empty($password503)) {
-			$deploySettings['before'][] = sprintf('%s?operation=start&password=%s', $url, urlencode($password503));
+			$jobs['before'][] = sprintf('%s?operation=start&password=%s', $url, urlencode($password503));
 			ftruncate($handle, 0);
 		}
 		fwrite($handle, $settings['password']);
 		fclose($handle);
 
 		$encodedPassword = urlencode($settings['password']);
-		$deploySettings['after'][] = sprintf('%s?operation=migrate&password=%s', $url, $encodedPassword);
-		$deploySettings['after'][] = sprintf('%s?operation=stop&password=%s', $url, $encodedPassword);
+		$jobs['after'][] = sprintf('%s?operation=migrate&password=%s', $url, $encodedPassword);
+		$jobs['after'][] = sprintf('%s?operation=stop&password=%s', $url, $encodedPassword);
 
 		// let migrant settings deploy
-		$settingsFile = self::getRootDir() . self::$tempSettingsFileName;
+		$settingsFile = self::getRootDir() . '/' . self::$tempSettingsFileName;
 		$handle = fopen($settingsFile, 'w');
 		fwrite($handle, serialize($settings));
 		fclose($handle);
 
 		// deploy
-		$deployTempConfig = tempnam(sys_get_temp_dir(), 'mig');
+		$deployTempConfig = sys_get_temp_dir() . '/deploy.php';
 		$tmpFile = fopen($deployTempConfig, 'w');
-		fwrite($tmpFile, var_export($globalSettings, true));
+		fwrite($tmpFile, '<?php return ' . var_export($globalSettings, true) . ";\n");
 		fclose($tmpFile);
 		system(sprintf('php %s %s', escapeshellarg(__DIR__ . '/../../../../dg/ftp-deployment/Deployment/deployment'),
 			escapeshellarg($deployTempConfig)));
@@ -64,7 +54,40 @@ class LocalRunner extends Runner
 	}
 
 
-	private static function parseConfig($settingsFile)
+	/**
+	 * @param array $settings
+	 * @return array [ array & $before, array & $after ]
+	 */
+	private function findJobs(array & $settings)
+	{
+		if (isset($settings['remote'])) {
+			return [& $settings, & $settings];
+		}
+
+		$before = $after = null;
+		foreach ($settings as & $section) {
+			if (isset($section['remote'])) {
+				if ($before === null) {
+					$before = & $section;
+				}
+				$after = & $section;
+				// set local dir if not defined
+				$section += [ 'local' => self::getRootDir() ];
+			}
+		}
+		if ($before === null) {
+			throw new ConfigurationException('Deployment section not found.');
+		}
+		$before += [ 'before' => [] ];
+		$after += [ 'after' => [] ];
+		return [
+			'before' => & $before['before'],
+			'after' => & $after['after'],
+		];
+	}
+
+
+	private function parseConfig($settingsFile)
 	{
 		// check file location
 		if (!file_exists($settingsFile)) {

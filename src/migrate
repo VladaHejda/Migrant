@@ -23,7 +23,7 @@ if ($cmd->isEmpty()) {
 $options = $cmd->parse();
 
 try {
-	Migrant\LocalRunner::run($options['config']);
+	(new Migrant\LocalRunner)->run($options['config']);
 } catch (Migrant\ConfigurationException $e) {
 	echo $e->getMessage() . "\n";
 	return;
