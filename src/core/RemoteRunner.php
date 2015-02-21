@@ -31,6 +31,7 @@ class RemoteRunner extends Runner
 		} catch (\ErrorException $e) {
 			throw new RequestException('Broken Migrant configuration.', 0, $e);
 		}
+		unlink($settingsFile);
 
 		self::checkIp($settings['allowedIps']);
 
